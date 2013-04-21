@@ -1,0 +1,53 @@
+-- Start on the GUI where you put in the file. Im trying to stay withing the style of LuaIDE
+
+local readBounds = function( min, max )
+	term.setBackgroundColour( colors.black )
+
+	local realString = ""
+	local showString = ""
+	local pointer = pointer or ""
+	local x, y = term.getCursorPos()
+	term.setCursorPos( x - 1 < 1 and x or x - 1, y)
+
+	term.setCursorBlink(true)
+	while true do
+		local event = {os.pullEvent()}
+		local x, y = term.getCursorPos()
+		
+		if event[1] == "char" then
+			showString = showString .. event[2]
+			realString = realString .. event[2]
+		elseif event[1] == "key" then
+			if event[2] == keys.enter then
+				print()
+				return realString
+			elseif event[2] == keys.backspace then
+				showString = string.sub(showString, 1, showString:len() - 1)
+				realString = string.sub(realString, 1, realString:len() - 1)
+			end
+		end
+		if x == max + 1 then
+			showString = string.sub(showString, -(max - min - 1))
+		end
+
+		term.setCursorPos( min, y)
+		write( string.rep(" ", max - min + 1))
+
+		term.setCursorPos( min, y)
+		write( showString )
+	end
+end
+
+local width, height = term.getSize()
+
+term.setBackgroundColour( colours.lightGrey )
+term.clear()
+term.setBackgroundColour( colours.grey )
+
+local xMin = math.floor( width / 5 ) * 2
+local xMax = math.floor( width / 5 ) * 4
+
+for i = 0, 2 do
+	term.setCursorPos( xMin, math.floor( height / 3) * 2 + i)
+	write( " ", xMax - xMin)
+end
