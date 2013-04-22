@@ -1,3 +1,11 @@
+-- Define these variables at the top for easy modification
+
+local tabWidth = 2
+local increment = {"if", "do", "repeat", "function"}
+local decrement = {"end", "until"}
+local special = {"elseif", "else"}
+
+
 -- Done with the GUI, however readBounds doesnt work properly yet.. (cursor keeps blinking at the wrong spot)
 
 local readBounds = function( nMin, nMax )
@@ -81,7 +89,44 @@ if not fs.exists( sFile ) then
 	term.setBackgroundColour( colours.blue )
 	cPrint("File does not exist!", ntY)
 	error()
+elseif fs.isDir(sFile) then
+	term.setTextColour( colours.red )
+	term.setBackgroundColour( colours.blue )
+	cPrint("File is a directory!", ntY)
+	error()
+elseif fs.isReadOnly(sFile) then
+	term.setTextColour( colours.red )
+	term.setBackgroundColour( colours.blue )
+	cPrint("File is read only!", ntY)
+	error()
 end
+
+local function isInStr(code, line, case)
+	-- Check if a certain keyword is in a string (multiline or singular)
+	return false
+end
+
+local function isInComment(code, line, case)
+	-- Check if a keyword is in a comment (block or line)
+	return false
+end
+
+
+local f = io.open(sFile, "r")
+local l = f:read("*l")
+local indent = 0
+
+while l do
+	-- Remove current indentation
+	local new = l:gsub("^%s*(.-)", "%1")
+
+	-- Add indentation
+	new = string.rep(" ", indent * tabWidth) .. new
+
+	-- Change indentation
+	-- ...
+end
+
 
 
 
