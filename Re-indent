@@ -1,7 +1,6 @@
 -- Done with the GUI, however readBounds doesnt work properly yet.. (cursor keeps blinking at the wrong spot)
--- 
 
-local readBounds = function( min, max )
+local readBounds = function( nMin, nMax )
 	local realString = ""
 	local showString = ""
 	local pointer = pointer or ""
@@ -12,7 +11,7 @@ local readBounds = function( min, max )
 	while true do
 		local event = {os.pullEvent()}
 		local x, y = term.getCursorPos()
-		
+
 		if event[1] == "char" then
 			showString = showString .. event[2]
 			realString = realString .. event[2]
@@ -25,17 +24,18 @@ local readBounds = function( min, max )
 				realString = string.sub(realString, 1, realString:len() - 1)
 			end
 		end
-		if x == max + 1 then
-			showString = string.sub(showString, -(max - min - 1))
+		if x == nMax + 1 then
+		showString = string.sub(showString, -(nMax - nMin - 1))
 		end
 
-		term.setCursorPos( min, y)
-		write( string.rep(" ", max - min + 1))
+		term.setCursorPos( nMin, y)
+		write( string.rep(" ", nMax - nMin + 1))
 
-		term.setCursorPos( min, y)
+		term.setCursorPos( nMin, y)
 		write( showString )
 	end
 end
+
 local function cPrint(text, ny) -- function made by you :P
 	if type(text) == "table" then for _, v in pairs(text) do centerPrint(v) end
 	else
@@ -83,4 +83,40 @@ if not fs.exists( sFile ) then
 	error()
 end
 
--- Continue..
+
+
+-- some brainstorming
+-- [[  PSUEDO CODE ]] --
+local indentLevel = {} -- Same as the current line
+-- This is the table where we store the indent level for every line.
+
+
+-- assuming we take comments at level zero
+local comments = {}
+local startComment = false
+for i = 1, #lines do
+	if string.find("--[[") then
+		startComment = true
+		comments[#comments + 1] = {}
+		comments[#comments][1] = i
+	elseif string.find("]]") and startComment then -- "]]" -> I think thats is not going to work
+		startComment = false
+		comments[#comments][2] = i
+	elseif string.find("--") then
+		comments[#comments + 1] = {}
+		comments[#comments][1], comments[#comments][2] = i, i
+	end
+end
+
+-- After making that, they could also do: if something then -[[ blabla ]] print("d")
+-- It is something to think about, maybe indent for it + the indent space, and when the comment is over indent back to the original
+-- indent level, or where it was 
+-- At least we got the comments mapped out
+
+-- For the basic indenting, we could use a pairs loop in a pairs loop
+local 
+
+for index, line in pairs( linesTable ) do
+	for _, statement in pairs(
+
+--[[ END PSUEDO CODE ]]--
