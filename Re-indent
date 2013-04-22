@@ -1,8 +1,7 @@
--- Start on the GUI where you put in the file. Im trying to stay withing the style of LuaIDE
+-- Done with the GUI, however readBounds doesnt work properly yet.. (cursor keeps blinking at the wrong spot)
+-- 
 
 local readBounds = function( min, max )
-	term.setBackgroundColour( colors.black )
-
 	local realString = ""
 	local showString = ""
 	local pointer = pointer or ""
@@ -37,17 +36,51 @@ local readBounds = function( min, max )
 		write( showString )
 	end
 end
+local function cPrint(text, ny) -- function made by you :P
+	if type(text) == "table" then for _, v in pairs(text) do centerPrint(v) end
+	else
+		local x, y = term.getCursorPos()
+		local w, h = term.getSize()
+		term.setCursorPos(w/2 - text:len()/2 + (#text % 2 == 0 and 1 or 0), ny or y)
+		print(text)
+	end
+end
 
 local width, height = term.getSize()
 
-term.setBackgroundColour( colours.lightGrey )
+term.setBackgroundColour( colours.cyan )
 term.clear()
-term.setBackgroundColour( colours.grey )
+term.setBackgroundColour( colours.blue )
 
-local xMin = math.floor( width / 5 ) * 2
+local xMin = math.floor( width / 5 )
 local xMax = math.floor( width / 5 ) * 4
 
-for i = 0, 2 do
-	term.setCursorPos( xMin, math.floor( height / 3) * 2 + i)
-	write( " ", xMax - xMin)
+local nX, nY, ntX, ntY
+
+for i = 0, 4 do
+	term.setCursorPos( xMin, math.floor( height / 3) + i + 2)
+	if i == 2 then -- The lazy way
+		nX, nY = term.getCursorPos()
+	elseif i == 1 then
+		ntX, ntY = term.getCursorPos()
+	end
+	write( string.rep(" ", xMax - xMin))
 end
+
+term.setTextColour( colours.white )
+term.setCursorPos( xMin + 3, nY)
+write(">")
+
+term.setBackgroundColour( colours.black )
+write( string.rep(" ", (xMax - 3) - (xMin + 5) ))
+term.setCursorPos( xMin + 5, nY)
+local sFile = readBounds( xMin + 5, xMax - 3)
+
+if not fs.exists( sFile ) then
+	term.setTextColour( colours.red )
+	term.setBackgroundColour( colours.blue )
+	cPrint("File does not exist!", ntY)
+	error()
+end
+
+-- Continue..
