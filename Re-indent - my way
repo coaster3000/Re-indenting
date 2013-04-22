@@ -106,7 +106,7 @@ local function isInStr(code, line, case)
 	return false
 end
 
---local function isInComment(code, line, case)
+local function isInComment(code, line, case)
 	-- Check if a keyword is in a comment (block or line)
 	return false
 end 
