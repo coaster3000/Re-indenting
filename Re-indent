@@ -1,50 +1,16 @@
--- Define these variables at the top for easy modification
+ --QUICK TESTING                                        Thats me :D     
+local tArgs = (...)                                       --  v
+if type(tArgs) ~= "string" then printError("Enter program, idiot!") error() end
+local sFile = tArgs
 
 local tabWidth = 2
-local increment = {"if", "do", "repeat", "function"}
-local decrement = {"end", "until"}
-local special = {"elseif", "else"}
+local onTab = {
+	incr = {"if", "do", "repeat", "function"},
+	decr = {"end", "until"},
+	els = {"elseif", "else"}
+}
 
-
--- Done with the GUI, however readBounds doesnt work properly yet.. (cursor keeps blinking at the wrong spot)
-
-local readBounds = function( nMin, nMax )
-	local realString = ""
-	local showString = ""
-	local pointer = pointer or ""
-	local x, y = term.getCursorPos()
-	term.setCursorPos( x - 1 < 1 and x or x - 1, y)
-
-	term.setCursorBlink(true)
-	while true do
-		local event = {os.pullEvent()}
-		local x, y = term.getCursorPos()
-
-		if event[1] == "char" then
-			showString = showString .. event[2]
-			realString = realString .. event[2]
-		elseif event[1] == "key" then
-			if event[2] == keys.enter then
-				print()
-				return realString
-			elseif event[2] == keys.backspace then
-				showString = string.sub(showString, 1, showString:len() - 1)
-				realString = string.sub(realString, 1, realString:len() - 1)
-			end
-		end
-		if x == nMax + 1 then
-		showString = string.sub(showString, -(nMax - nMin - 1))
-		end
-
-		term.setCursorPos( nMin, y)
-		write( string.rep(" ", nMax - nMin + 1))
-
-		term.setCursorPos( nMin, y)
-		write( showString )
-	end
-end
-
-local function cPrint(text, ny) -- function made by you :P
+local cPrint = function(text, ny)
 	if type(text) == "table" then for _, v in pairs(text) do centerPrint(v) end
 	else
 		local x, y = term.getCursorPos()
@@ -53,76 +19,112 @@ local function cPrint(text, ny) -- function made by you :P
 		print(text)
 	end
 end
+local errFile = function( errMessage )
+	local x, y = term.getCursorPos()
 
-local width, height = term.getSize()
-
-term.setBackgroundColour( colours.cyan )
-term.clear()
-term.setBackgroundColour( colours.blue )
-
-local xMin = math.floor( width / 5 )
-local xMax = math.floor( width / 5 ) * 4
-
-local nX, nY, ntX, ntY
-
-for i = 0, 4 do
-	term.setCursorPos( xMin, math.floor( height / 3) + i + 2)
-	if i == 2 then -- The lazy way
-		nX, nY = term.getCursorPos()
-	elseif i == 1 then
-		ntX, ntY = term.getCursorPos()
-	end
-	write( string.rep(" ", xMax - xMin))
-end
-
-term.setTextColour( colours.white )
-term.setCursorPos( xMin + 3, nY)
-write(">")
-
-term.setBackgroundColour( colours.black )
-write( string.rep(" ", (xMax - 3) - (xMin + 5) ))
-term.setCursorPos( xMin + 5, nY)
-local sFile = readBounds( xMin + 5, xMax - 3)
-
-if not fs.exists( sFile ) then
 	term.setTextColour( colours.red )
 	term.setBackgroundColour( colours.blue )
-	cPrint("File does not exist!", ntY)
+	cPrint( errMessage, y - 1 )
+
+	term.setBackgroundColour( colours.black )
+	term.clear()
+	term.setCursorPos( 1, 1 )
 	error()
+end
+
+if not fs.exists(sFile) then
+	errFile("File does not exist!")
 elseif fs.isDir(sFile) then
-	term.setTextColour( colours.red )
-	term.setBackgroundColour( colours.blue )
-	cPrint("File is a directory!", ntY)
-	error()
+	errFile("File is a directory!")
 elseif fs.isReadOnly(sFile) then
-	term.setTextColour( colours.red )
-	term.setBackgroundColour( colours.blue )
-	cPrint("File is read only!", ntY)
-	error()
+	errFile("File is read only!")
 end
 
-local function isInStr(code, line, case)
-	-- Check if a certain keyword is in a string (multiline or singular)
-	return false
+-- Get the contents of the file
+local content = {}
+
+local handle = fs.open(sFile, "r")
+local line = handle.readLine()
+content[#content + 1] = line:gsub("^%s*(.-)", "%1")
+
+for line in handle.readLine do
+	content[#content + 1] = line:gsub("^%s*(.-)", "%1")
 end
 
-local function isInComment(code, line, case)
-	-- Check if a keyword is in a comment (block or line)
-	return false
+-- Map the comments & strings
+local comments = {}
+local inString = {}
+
+local setComment = function( lineStart, lineEnd, charStart, charEnd)
+	comments[#comments + 1] = {}
+	comments[#comments].lineStart = lineStart
+	comments[#comments].lineEnd = lineEnd
+	comments[#comments].charStart = charStart
+	comments[#comments].charEnd = charEnd
+end
+local setString = function( lineStart, lineEnd, charStart, charEnd)
+	inString[#inString + 1] = {}
+	inString[#inString].lineStart = lineStart
+	inString[#inString].lineEnd = lineEnd
+	inString[#inString].charStart = charStart
+	inString[#inString].charEnd = charEnd
 end
 
+local bComment = false
+local bString = false
 
-local f = io.open(sFile, "r")
-local l = f:read("*l")
-local indent = 0
-
-while l do
-	-- Remove current indentation
-	local new = l:gsub("^%s*(.-)", "%1")
-
-	-- Add indentation
-	new = string.rep(" ", indent * tabWidth) .. new
-
-	-- Change indentation
-	-- ...
+for i = 1, #content do
+	if string.find( content[i], "%-%-%[%[") and not bString and not bComment then
+		local cStart = string.find( content[i], "%-%-%[%[")
+		setComment( i, nil, cStart, nil)
+		bComment = true
+	elseif string.find( content[i], "%-%-%[=%[") and not bString and not bComment then
+		local cStart = string.find( content[i], "%-%-%[=%[")
+		setComment( i, nil, cStart, nil)
+		bComment = true
+	elseif string.find( content[i], "%[%[") and not bString and not bComment then
+		local cStart = string.find( content[i], "%[%[")
+		setString( i, nil, cStart, nil)
+		bString = true
+	elseif string.find( content[i], "%[=%[") and not bString and not bComment then
+		local cStart = string.find( content[i], "%[=%[")
+		setString( i, nil, cStart, nil)
+		bString = true
+	end
+	if string.find( content[i], "%]%]") and bString and not bComment then
+		local cStart, cEnd = string.find( content[i], "%]%]")
+		_inString[#inString].lineEnd = i
+		_inString[#inString].charEnd = cEnd
+		bString = false
+	elseif string.find( content[i], "%]=%]") and bString and not bComment then
+		local cStart, cEnd = string.find( content[i], "%]=%]")
+		inString[#inString].lineEnd = i
+		inString[#inString].charEnd = cEnd
+		bString = false
+	end
+	if string.find( content[i], "%]%]") and not bString and bComment then
+		local cStart, cEnd = string.find( content[i], "%]%]")
+		comments[#comments].lineEnd = i
+		comments[#comments].charEnd = cEnd
+		bComment = false
+	elseif string.find( content[i], "%]=%]") and not bString and bComment then
+		local cStart, cEnd = string.find( content[i], "%]=%]")
+		comments[#comments].lineEnd = i
+		comments[#comments].charEnd = cEnd
+		bComment = false
+	end
+	if string.find( content[i], "%-%-") and not bString and not bComment then
+		local cStart = string.find( content[i], "%-%-")
+		setComment(i, i, cStart, -1)
+	elseif string.find( content[i], "'") and not bString and not bComment then
+		local cStart, cEnd = string.find( content[i], "'")
+		local nextChar = string.sub( content[i], cEnd + 1, string.len(content[i]))
+		local _, cEnd = string.find( nextChar, "'")
+		setString( i, i, cStart, cEnd)
+	elseif string.find( content[i], '"') and not bString and not bComment then
+		local cStart, cEnd = string.find( content[i], '"')
+		local nextChar = string.sub( content[i], cEnd + 1, string.len(content[i]))
+		local _, cEnd = string.find( nextChar, '"')
+		setString( i, i, cStart, cEnd)
+	end
 end

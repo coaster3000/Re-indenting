@@ -109,41 +109,13 @@ end
 local function isInComment(code, line, case)
 	-- Check if a keyword is in a comment (block or line)
 	return false
-end 
+end
 
--- Im more familair with the FS API, so I use that instead. You can change it 
--- if you know how to write in append mode.
 
---local f = io.open(sFile, "r")
---local l = f:read("*l")
-local f = fs.open(sFile, "r")
-local l = f.readLine()
+local f = io.open(sFile, "r")
+local l = f:read("*l")
 local indent = 0
 
--- Just so I know what Im doing, I know you have a table in LuaIDE with the lines
--- It gives me a reference. TODO: delete on release
-local lines = {}
-
-for l in f.readLine do
-	lines[#lines] = l:gsub("^%s*(.-)", "%1")
-end
-
-f.close()
-fs.delete(sFile)
-
-local nF = fs.open(sFile, "a")
-
-for i = 1, #lines do
-	local sLine = lines[i]
-
-	-- Indent stuff
-
-	f.writeLine( sLine )
-end
-
-f.close()
-
---[[
 while l do
 	-- Remove current indentation
 	local new = l:gsub("^%s*(.-)", "%1")
@@ -153,4 +125,4 @@ while l do
 
 	-- Change indentation
 	-- ...
-end ]]
+end
