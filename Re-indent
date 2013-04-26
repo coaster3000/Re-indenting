@@ -44,8 +44,6 @@ end
 local content = {}
 
 local handle = fs.open(sFile, "r")
-local line = handle.readLine()
-content[#content + 1] = line:gsub("^%s*(.-)", "%1")
 
 for line in handle.readLine do
 	content[#content + 1] = line:gsub("^%s*(.-)", "%1")
