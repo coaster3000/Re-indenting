@@ -128,3 +128,35 @@ for i = 1, #content do
 		setString( i, i, cStart, cEnd)
 	end
 end
+
+local isInComment = function( tFunction, line, charNumb )
+	for _, v in pairs( tFunction ) do
+		local cLineStart = nil
+		local cLineEnd = nil
+		local cCharStart = nil
+		local cCharEnd = nil
+
+		for key, value in pairs( v ) do
+			if key == "lineStart" then
+				cLineStart = value
+			elseif key == "lineEnd" then
+				cLineEnd = value
+			elseif key == "charStart" then
+				cCharStart = value
+			elseif key == "charEnd" then
+				cCharEnd = value
+			end
+		end
+		if line >= cLineStart and line <= cLineEnd then
+			if line == cLineStart then
+				return not cCharStart > charNumb
+			elseif line == cLineEnd then
+				return not cCharEnd > charNumb
+			else
+				return true
+			end
+		end
+	end
+
+	return false
+end
