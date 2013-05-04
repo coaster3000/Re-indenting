@@ -20,17 +20,18 @@ local cPrint = function(text, ny)
 		print(text)
 	end
 end
-local errFile = function( errMessage )
+local errFile = function( errMessage ) -- Temporary, changes when we work with a GUI
 	local x, y = term.getCursorPos()
 
 	term.setTextColour( colours.red )
 	term.setBackgroundColour( colours.blue )
 	cPrint( errMessage, y - 1 )
-
-	term.setBackgroundColour( colours.black )
+	
+	sleep(2)
+	erm.setBackgroundColour( colours.black )
 	term.clear()
 	term.setCursorPos( 1, 1 )
-	error()
+	return
 end
 
 if not fs.exists(sFile) then
@@ -168,7 +169,7 @@ for k, v in pairs(content) do
 
 	-- Lower level
 	local decrLevel = false
-	if incrLevel then -- Preventing loop if false
+	if not incrLevel then -- Preventing loop if true
 		for _, decr in pairs(onTab.decr) do
 			if v:find(decr) then
 				local sChar = v:find(decr)
@@ -181,7 +182,7 @@ for k, v in pairs(content) do
 	end
 
 	-- Special cases
-	if decrLevel then -- Preventing the loop if false
+	if not decrLevel then -- Preventing the loop if true
 		for _, sp in pairs(onTab.els) do
 			if v:find(sp) then
 				local sChar = v:find(sp)
