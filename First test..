@@ -1,0 +1,41 @@
+BEFORE:
+--[[ 
+
+if testing then
+for the win do
+this is awesome 
+                     end
+
+]]
+
+while true do
+if I think then
+this is awesome
+end
+for i = 1, math.huge do
+                      term.setCursorPos(1, i) 
+       string.rep("AWESOME", math.huge)
+          end
+    end
+
+-------------------------------------------
+AFTER:
+-------------------------------------------
+--[[ 
+
+if testing then
+for the win do
+this is awesome 
+end
+
+]]
+
+while true do
+  if I think then
+    this is awesome
+  end
+  for i = 1, math.huge do
+    term.setCursorPos(1, i) 
+    string.rep("AWESOME", math.huge)
+  end
+end
