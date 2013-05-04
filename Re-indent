@@ -46,10 +46,10 @@ end
 local content = {}
 
 local handle = fs.open(sFile, "r")
-
 for line in handle.readLine do
 	content[#content + 1] = line:gsub("^%s*(.-)", "%1")
 end
+handle.close()
 
 -- Map the comments & strings
 local comments = {}
@@ -148,8 +148,8 @@ local isInType = function( line, charNumb )
 			end
 		end
 	end
-	mainFunc( comments )
-	mainFunc( inString )
+	if mainFunc( comments ) then return true end
+	if mainFunc( inString ) then return true end
 	return false
 end
 
@@ -200,3 +200,10 @@ for k, v in pairs(content) do
 	-- Increment level
 	if incrLevel then level = level + 1 end
 end
+
+fs.delete(sFile)
+local file = fs.open(sFile, "a")
+for k, v in pairs( content ) do
+	file.writeLine( new[k] .. v )
+end
+file.close()
