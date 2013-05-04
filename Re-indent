@@ -4,10 +4,11 @@ if type(tArgs) ~= "string" then printError("Enter program, idiot!") error() end
 local sFile = tArgs
 
 local tabWidth = 2
+
 local onTab = {
-	incr = {"if", "do", "repeat", "function"},
-	decr = {"end", "until"},
-	els = {"elseif", "else"}
+	incr = {"if%s+.+%s+then%s*$", "for%s+.+%s+do%s*$", "while%s+.+%s+do%s*$", "repeat%s*$", "function%s+[a-zA-Z_0-9]\(.*\)%s*$"},
+	decr = {"end", "until%s+.+"},
+	els = {"else%s*$", "elseif%s+.+%s+then%s*$"}
 }
 
 local cPrint = function(text, ny)
@@ -127,24 +128,13 @@ for i = 1, #content do
 	end
 end
 
-local isInComment = function( tFunction, line, charNumb )
+local isInType = function( tFunction, line, charNumb )
 	for _, v in pairs( tFunction ) do
-		local cLineStart = nil
-		local cLineEnd = nil
-		local cCharStart = nil
-		local cCharEnd = nil
+		local cLineStart = v["lineStart"]
+		local cLineEnd = v["lineEnd"]
+		local cCharStart = v["charStart"]
+		local cCharEnd = v["charEnd"]
 
-		for key, value in pairs( v ) do
-			if key == "lineStart" then
-				cLineStart = value
-			elseif key == "lineEnd" then
-				cLineEnd = value
-			elseif key == "charStart" then
-				cCharStart = value
-			elseif key == "charEnd" then
-				cCharEnd = value
-			end
-		end
 		if line >= cLineStart and line <= cLineEnd then
 			if line == cLineStart then
 				return not cCharStart > charNumb
@@ -157,4 +147,39 @@ local isInComment = function( tFunction, line, charNumb )
 	end
 
 	return false
+end
+
+local new = {}
+local level = 0
+for k, v in pairs(content) do
+	-- If we should increment level
+	local incrLevel = false
+	for _, incr in pairs(onTab.incr) do
+		if v:find(incr) then
+			incrLevel = true
+		end
+	end
+
+	-- Lower level
+	local decrLevel = false
+	for _, decr in pairs(onTab.decr) do
+		if v:find(decr) and not incrLevel then
+			level = math.max(0, level - 1) -- Don't let the level drop below 0
+			decrLevel = true
+		end
+	end
+
+	-- Special cases
+	for _, sp in pairs(onTab.els) do
+		if v:find(sp) and not decrLevel then
+			incrLevel = true
+			level = math.max(0, level - 1) -- Don't let the level drop below 0
+		end
+	end
+
+	-- Add
+	new[k] = string.rep(" ", level * tabWidth)
+	
+	-- Increment level
+	if incrLevel then level = level + 1 end
 end
