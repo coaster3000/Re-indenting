@@ -1,5 +1,5 @@
- --QUICK TESTING                                        Thats me :D     
-local tArgs = (...)                                       --  v
+ --QUICK TESTING
+local tArgs = (...)
 if type(tArgs) ~= "string" then printError("Enter program, idiot!") error() end
 local sFile = tArgs
 
@@ -92,8 +92,8 @@ for i = 1, #content do
 	end
 	if string.find( content[i], "%]%]") and bString and not bComment then
 		local cStart, cEnd = string.find( content[i], "%]%]")
-		_inString[#inString].lineEnd = i
-		_inString[#inString].charEnd = cEnd
+		inString[#inString].lineEnd = i
+		inString[#inString].charEnd = cEnd
 		bString = false
 	elseif string.find( content[i], "%]=%]") and bString and not bComment then
 		local cStart, cEnd = string.find( content[i], "%]=%]")
@@ -128,24 +128,27 @@ for i = 1, #content do
 	end
 end
 
-local isInType = function( tFunction, line, charNumb )
-	for _, v in pairs( tFunction ) do
-		local cLineStart = v["lineStart"]
-		local cLineEnd = v["lineEnd"]
-		local cCharStart = v["charStart"]
-		local cCharEnd = v["charEnd"]
+local isInType = function( line, charNumb )
+	local mainFunc = function( tFunction )
+		for _, v in pairs( tFunction ) do
+			local cLineStart = v["lineStart"]
+			local cLineEnd = v["lineEnd"]
+			local cCharStart = v["charStart"]
+			local cCharEnd = v["charEnd"]
 
-		if line >= cLineStart and line <= cLineEnd then
-			if line == cLineStart then
-				return not cCharStart > charNumb
-			elseif line == cLineEnd then
-				return not cCharEnd > charNumb
-			else
-				return true
+			if line >= cLineStart and line <= cLineEnd then
+				if line == cLineStart then
+					return cCharStart < charNumb
+				elseif line == cLineEnd then
+					return cCharEnd > charNumb
+				else
+					return true
+				end
 			end
 		end
 	end
-
+	mainFunc( comments )
+	mainFunc( inString )
 	return false
 end
 
@@ -156,24 +159,37 @@ for k, v in pairs(content) do
 	local incrLevel = false
 	for _, incr in pairs(onTab.incr) do
 		if v:find(incr) then
-			incrLevel = true
+			local sChar = v:find(incr)
+			if not isInType(k, sChar) then
+				incrLevel = true
+			end
 		end
 	end
 
 	-- Lower level
 	local decrLevel = false
-	for _, decr in pairs(onTab.decr) do
-		if v:find(decr) and not incrLevel then
-			level = math.max(0, level - 1) -- Don't let the level drop below 0
-			decrLevel = true
+	if incrLevel then -- Preventing loop if false
+		for _, decr in pairs(onTab.decr) do
+			if v:find(decr) then
+				local sChar = v:find(decr)
+				if not isInType(k, sChar) then
+					level = math.max(0, level - 1) -- Don't let the level drop below 0
+					decrLevel = true
+				end
+			end
 		end
 	end
 
 	-- Special cases
-	for _, sp in pairs(onTab.els) do
-		if v:find(sp) and not decrLevel then
-			incrLevel = true
-			level = math.max(0, level - 1) -- Don't let the level drop below 0
+	if decrLevel then -- Preventing the loop if false
+		for _, sp in pairs(onTab.els) do
+			if v:find(sp) then
+				local sChar = v:find(sp)
+				if not isInType(k, sChar) then
+					incrLevel = true
+					level = math.max(0, level - 1) -- Don't let the level drop below 0
+				end
+			end
 		end
 	end
 
