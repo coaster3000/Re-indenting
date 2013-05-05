@@ -143,36 +143,31 @@ local function reindent(contents)
 	local level = 0
 	for k, v in pairs(contents) do
 		local incrLevel = false
+		local foundIncr = false
 		for _, incr in pairs(increment) do
-			if v:find(incr) then
-				local sChar = v:find(incr)
-				if not isIn(k, sChar) then
-					incrLevel = true
-				end
+			if v:find(incr) and not isIn(k, v:find(incr)) then
+				incrLevel = true
+			end
+			if v:find(incr:sub(1, -2)) and not isIn(k, v:find(incr)) then
+				foundIncr = true
 			end
 		end
 
 		local decrLevel = false
 		if not incrLevel then
 			for _, decr in pairs(decrement) do
-				if v:find(decr) then
-					local sChar = v:find(decr)
-					if not isIn(k, sChar) then
-						level = math.max(0, level - 1)
-						decrLevel = true
-					end
+				if v:find(decr) and not isIn(k, v:find(decr)) and not foundIncr then
+					level = math.max(0, level - 1)
+					decrLevel = true
 				end
 			end
 		end
 
 		if not decrLevel then
 			for _, sp in pairs(special) do
-				if v:find(sp) then
-					local sChar = v:find(sp)
-					if not isIn(k, sChar) then
-						incrLevel = true
-						level = math.max(0, level - 1)
-					end
+				if v:find(sp) and not isIn(k, v:find(sp)) then
+					incrLevel = true
+					level = math.max(0, level - 1)
 				end
 			end
 		end
@@ -207,7 +202,6 @@ if path then
 	local f = fs.open(path, "r")
 	for line in f.readLine do
 		content[#content + 1] = line:gsub("^%s*(.-)", "%1")
-		print(content[#content])
 	end
 	f.close()
 
@@ -216,7 +210,6 @@ if path then
 	fs.delete(path)
 	local f = fs.open(path, "a")
 	for _, v in pairs(content) do
-		print(v)
 		f.writeLine(v)
 	end
 	f.close()
