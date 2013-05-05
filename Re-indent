@@ -1,4 +1,3 @@
-
 --  
 --  Indent
 --  By Engineer and GravityScore
@@ -9,7 +8,7 @@
 local width, height = term.getSize()
 
 local args = {...}
-local tabWidth = 4
+local tabWidth = 2
 local path = nil
 
 local comments = {}
@@ -17,21 +16,21 @@ local strings = {}
 local button = {}
 
 increment = {
-    "if%s+.+%s+then%s*$",
-    "for%s+.+%s+do%s*$",
-    "while%s+.+%s+do%s*$",
-    "repeat%s*$",
-    "function%s+[a-zA-Z_0-9]\(.*\)%s*$"
+	"if%s+.+%s+then%s*$",
+	"for%s+.+%s+do%s*$",
+	"while%s+.+%s+do%s*$",
+	"repeat%s*$",
+	"function%s+[a-zA-Z_0-9]\(.*\)%s*$"
 }
 
 decrement = {
-    "end",
-    "until%s+.+"
+	"end",
+	"until%s+.+"
 }
 
 special = {
-    "else%s*$",
-    "elseif%s+.+%s+then%s*$"
+	"else%s*$",
+	"elseif%s+.+%s+then%s*$"
 }
 --  -------- GUI
 local function setBox( xTop, yTop, xBot, yBot, col, name )
