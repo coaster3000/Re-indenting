@@ -7,7 +7,7 @@
 
 --  -------- Variables
 
-local tArgs = {...}
+local args = {...}
 local tabWidth = 2
 
 local comments = {}
@@ -146,7 +146,7 @@ local function reindent(contents)
 		for _, incr in pairs(increment) do
 			if v:find(incr) then
 				local sChar = v:find(incr)
-				if not isInType(k, sChar) then
+				if not isIn(k, sChar) then
 					incrLevel = true
 				end
 			end
@@ -157,7 +157,7 @@ local function reindent(contents)
 			for _, decr in pairs(decrement) do
 				if v:find(decr) then
 					local sChar = v:find(decr)
-					if not isInType(k, sChar) then
+					if not isIn(k, sChar) then
 						level = math.max(0, level - 1)
 						decrLevel = true
 					end
@@ -169,7 +169,7 @@ local function reindent(contents)
 			for _, sp in pairs(special) do
 				if v:find(sp) then
 					local sChar = v:find(sp)
-					if not isInType(k, sChar) then
+					if not isIn(k, sChar) then
 						incrLevel = true
 						level = math.max(0, level - 1)
 					end
@@ -177,7 +177,7 @@ local function reindent(contents)
 			end
 		end
 
-		new[k] = string.rep(" ", level * tabWidth)
+		new[k] = string.rep(" ", level * tabWidth) .. v
 		if incrLevel then level = level + 1 end
 	end
 
@@ -207,6 +207,7 @@ if path then
 	local f = fs.open(path, "r")
 	for line in f.readLine do
 		content[#content + 1] = line:gsub("^%s*(.-)", "%1")
+		print(content[#content])
 	end
 	f.close()
 
@@ -215,9 +216,12 @@ if path then
 	fs.delete(path)
 	local f = fs.open(path, "a")
 	for _, v in pairs(content) do
+		print(v)
 		f.writeLine(v)
 	end
 	f.close()
+
+	print("File indented!")
 else
 	-- GUI
 	-- ...
