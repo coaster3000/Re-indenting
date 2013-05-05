@@ -1,209 +1,224 @@
- --QUICK TESTING
-local tArgs = (...)
-if type(tArgs) ~= "string" then printError("Enter program, idiot!") error() end
-local sFile = tArgs
 
+--  
+--  Indent
+--  By Engineer and GravityScore
+--  
+
+
+--  -------- Variables
+
+local tArgs = {...}
 local tabWidth = 2
 
-local onTab = {
-	incr = {"if%s+.+%s+then%s*$", "for%s+.+%s+do%s*$", "while%s+.+%s+do%s*$", "repeat%s*$", "function%s+[a-zA-Z_0-9]\(.*\)%s*$"},
-	decr = {"end", "until%s+.+"},
-	els = {"else%s*$", "elseif%s+.+%s+then%s*$"}
+local comments = {}
+local strings = {}
+
+increment = {
+	"if%s+.+%s+then%s*$",
+	"for%s+.+%s+do%s*$",
+	"while%s+.+%s+do%s*$",
+	"repeat%s*$",
+	"function%s+[a-zA-Z_0-9]\(.*\)%s*$"
 }
 
-local cPrint = function(text, ny)
-	if type(text) == "table" then for _, v in pairs(text) do centerPrint(v) end
-	else
-		local x, y = term.getCursorPos()
-		local w, h = term.getSize()
-		term.setCursorPos(w/2 - text:len()/2 + (#text % 2 == 0 and 1 or 0), ny or y)
-		print(text)
-	end
-end
-local errFile = function( errMessage ) -- Temporary, changes when we work with a GUI
-	local x, y = term.getCursorPos()
+decrement = {
+	"end",
+	"until%s+.+"
+}
 
-	term.setTextColour( colours.red )
-	term.setBackgroundColour( colours.blue )
-	cPrint( errMessage, y - 1 )
-	
-	sleep(2)
-	erm.setBackgroundColour( colours.black )
-	term.clear()
-	term.setCursorPos( 1, 1 )
-	return
-end
+special = {
+	"else%s*$",
+	"elseif%s+.+%s+then%s*$"
+}
 
-if not fs.exists(sFile) then
-	errFile("File does not exist!")
-elseif fs.isDir(sFile) then
-	errFile("File is a directory!")
-elseif fs.isReadOnly(sFile) then
-	errFile("File is read only!")
-end
 
--- Get the contents of the file
-local content = {}
+--  -------- Mapping
 
-local handle = fs.open(sFile, "r")
-for line in handle.readLine do
-	content[#content + 1] = line:gsub("^%s*(.-)", "%1")
-end
-handle.close()
+local function check(func)
+	for _, v in pairs(func) do
+		local cLineStart = v["lineStart"]
+		local cLineEnd = v["lineEnd"]
+		local cCharStart = v["charStart"]
+		local cCharEnd = v["charEnd"]
 
--- Map the comments & strings
-local comments = {}
-local inString = {}
-
-local setComment = function( lineStart, lineEnd, charStart, charEnd)
-	comments[#comments + 1] = {}
-	comments[#comments].lineStart = lineStart
-	comments[#comments].lineEnd = lineEnd
-	comments[#comments].charStart = charStart
-	comments[#comments].charEnd = charEnd
-end
-local setString = function( lineStart, lineEnd, charStart, charEnd)
-	inString[#inString + 1] = {}
-	inString[#inString].lineStart = lineStart
-	inString[#inString].lineEnd = lineEnd
-	inString[#inString].charStart = charStart
-	inString[#inString].charEnd = charEnd
-end
-
-local bComment = false
-local bString = false
-
-for i = 1, #content do
-	if string.find( content[i], "%-%-%[%[") and not bString and not bComment then
-		local cStart = string.find( content[i], "%-%-%[%[")
-		setComment( i, nil, cStart, nil)
-		bComment = true
-	elseif string.find( content[i], "%-%-%[=%[") and not bString and not bComment then
-		local cStart = string.find( content[i], "%-%-%[=%[")
-		setComment( i, nil, cStart, nil)
-		bComment = true
-	elseif string.find( content[i], "%[%[") and not bString and not bComment then
-		local cStart = string.find( content[i], "%[%[")
-		setString( i, nil, cStart, nil)
-		bString = true
-	elseif string.find( content[i], "%[=%[") and not bString and not bComment then
-		local cStart = string.find( content[i], "%[=%[")
-		setString( i, nil, cStart, nil)
-		bString = true
-	end
-	if string.find( content[i], "%]%]") and bString and not bComment then
-		local cStart, cEnd = string.find( content[i], "%]%]")
-		inString[#inString].lineEnd = i
-		inString[#inString].charEnd = cEnd
-		bString = false
-	elseif string.find( content[i], "%]=%]") and bString and not bComment then
-		local cStart, cEnd = string.find( content[i], "%]=%]")
-		inString[#inString].lineEnd = i
-		inString[#inString].charEnd = cEnd
-		bString = false
-	end
-	if string.find( content[i], "%]%]") and not bString and bComment then
-		local cStart, cEnd = string.find( content[i], "%]%]")
-		comments[#comments].lineEnd = i
-		comments[#comments].charEnd = cEnd
-		bComment = false
-	elseif string.find( content[i], "%]=%]") and not bString and bComment then
-		local cStart, cEnd = string.find( content[i], "%]=%]")
-		comments[#comments].lineEnd = i
-		comments[#comments].charEnd = cEnd
-		bComment = false
-	end
-	if string.find( content[i], "%-%-") and not bString and not bComment then
-		local cStart = string.find( content[i], "%-%-")
-		setComment(i, i, cStart, -1)
-	elseif string.find( content[i], "'") and not bString and not bComment then
-		local cStart, cEnd = string.find( content[i], "'")
-		local nextChar = string.sub( content[i], cEnd + 1, string.len(content[i]))
-		local _, cEnd = string.find( nextChar, "'")
-		setString( i, i, cStart, cEnd)
-	elseif string.find( content[i], '"') and not bString and not bComment then
-		local cStart, cEnd = string.find( content[i], '"')
-		local nextChar = string.sub( content[i], cEnd + 1, string.len(content[i]))
-		local _, cEnd = string.find( nextChar, '"')
-		setString( i, i, cStart, cEnd)
-	end
-end
-
-local isInType = function( line, charNumb )
-	local mainFunc = function( tFunction )
-		for _, v in pairs( tFunction ) do
-			local cLineStart = v["lineStart"]
-			local cLineEnd = v["lineEnd"]
-			local cCharStart = v["charStart"]
-			local cCharEnd = v["charEnd"]
-
-			if line >= cLineStart and line <= cLineEnd then
-				if line == cLineStart then
-					return cCharStart < charNumb
-				elseif line == cLineEnd then
-					return cCharEnd > charNumb
-				else
-					return true
-				end
-			end
+		if line >= cLineStart and line <= cLineEnd then
+			if line == cLineStart then return cCharStart < charNumb
+			elseif line == cLineEnd then return cCharEnd > charNumb
+			else return true end
 		end
 	end
-	if mainFunc( comments ) then return true end
-	if mainFunc( inString ) then return true end
+end
+
+local function isIn(line, loc)
+	if check(comments) then return true end
+	if check(strings) then return true end
 	return false
 end
 
-local new = {}
-local level = 0
-for k, v in pairs(content) do
-	-- If we should increment level
-	local incrLevel = false
-	for _, incr in pairs(onTab.incr) do
-		if v:find(incr) then
-			local sChar = v:find(incr)
-			if not isInType(k, sChar) then
-				incrLevel = true
-			end
+local function setComment(ls, le, cs, ce)
+	comments[#comments + 1] = {}
+	comments[#comments].lineStart = ls
+	comments[#comments].lineEnd = le
+	comments[#comments].charStart = cs
+	comments[#comments].charEnd = ce
+end
+
+local function setString(ls, le, cs, ce)
+	strings[#strings + 1] = {}
+	strings[#strings].lineStart = ls
+	strings[#strings].lineEnd = le
+	strings[#strings].charStart = cs
+	strings[#strings].charEnd = ce
+end
+
+local function map(contents)
+	local inCom = false
+	local inStr = false
+
+	for i = 1, #content do
+		if content[i]:find("%-%-%[%[") and not inStr and not inCom then
+			local cStart = content[i]:find("%-%-%[%[")
+			setComment(i, nil, cStart, nil)
+			inCom = true
+		elseif content[i]:find("%-%-%[=%[") and not inStr and not inCom then
+			local cStart = content[i]:find("%-%-%[=%[")
+			setComment(i, nil, cStart, nil)
+			inCom = true
+		elseif content[i]:find("%[%[") and not inStr and not inCom then
+			local cStart = content[i]:find("%[%[")
+			setString(i, nil, cStart, nil)
+			inStr = true
+		elseif content[i]:find("%[=%[") and not inStr and not inCom then
+			local cStart = content[i]:find("%[=%[")
+			setString(i, nil, cStart, nil)
+			inStr = true
+		end
+
+		if content[i]:find("%]%]") and inStr and not inCom then
+			local cStart, cEnd = content[i]:find("%]%]")
+			strings[#strings].lineEnd = i
+			strings[#strings].charEnd = cEnd
+			inStr = false
+		elseif content[i]:find("%]=%]") and inStr and not inCom then
+			local cStart, cEnd = content[i]:find("%]=%]")
+			strings[#strings].lineEnd = i
+			strings[#strings].charEnd = cEnd
+			inStr = false
+		end
+
+		if content[i]:find("%]%]") and not inStr and inCom then
+			local cStart, cEnd = content[i]:find("%]%]")
+			comments[#comments].lineEnd = i
+			comments[#comments].charEnd = cEnd
+			inCom = false
+		elseif content[i]:find("%]=%]") and not inStr and inCom then
+			local cStart, cEnd = content[i]:find("%]=%]")
+			comments[#comments].lineEnd = i
+			comments[#comments].charEnd = cEnd
+			inCom = false
+		end
+
+		if content[i]:find("%-%-") and not inStr and not inCom then
+			local cStart = content[i]:find("%-%-")
+			setComment(i, i, cStart, -1)
+		elseif content[i]:find("'") and not inStr and not inCom then
+			local cStart, cEnd = content[i]:find("'")
+			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+			local _, cEnd = nextChar:find("'")
+			setString(i, i, cStart, cEnd)
+		elseif content[i]:find('"') and not inStr and not inCom then
+			local cStart, cEnd = content[i]:find('"')
+			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+			local _, cEnd = nextChar:find('"')
+			setString(i, i, cStart, cEnd)
 		end
 	end
+end
 
-	-- Lower level
-	local decrLevel = false
-	if not incrLevel then -- Preventing loop if true
-		for _, decr in pairs(onTab.decr) do
-			if v:find(decr) then
-				local sChar = v:find(decr)
-				if not isInType(k, sChar) then
-					level = math.max(0, level - 1) -- Don't let the level drop below 0
-					decrLevel = true
-				end
-			end
-		end
-	end
 
-	-- Special cases
-	if not decrLevel then -- Preventing the loop if true
-		for _, sp in pairs(onTab.els) do
-			if v:find(sp) then
-				local sChar = v:find(sp)
+--  -------- Re-Indenting
+
+local function reindent(contents)
+	local new = {}
+	local level = 0
+	for k, v in pairs(contents) do
+		local incrLevel = false
+		for _, incr in pairs(increment) do
+			if v:find(incr) then
+				local sChar = v:find(incr)
 				if not isInType(k, sChar) then
 					incrLevel = true
-					level = math.max(0, level - 1) -- Don't let the level drop below 0
 				end
 			end
 		end
+
+		local decrLevel = false
+		if not incrLevel then
+			for _, decr in pairs(decrement) do
+				if v:find(decr) then
+					local sChar = v:find(decr)
+					if not isInType(k, sChar) then
+						level = math.max(0, level - 1)
+						decrLevel = true
+					end
+				end
+			end
+		end
+
+		if not decrLevel then
+			for _, sp in pairs(special) do
+				if v:find(sp) then
+					local sChar = v:find(sp)
+					if not isInType(k, sChar) then
+						incrLevel = true
+						level = math.max(0, level - 1)
+					end
+				end
+			end
+		end
+
+		new[k] = string.rep(" ", level * tabWidth)
+		if incrLevel then level = level + 1 end
 	end
 
-	-- Add
-	new[k] = string.rep(" ", level * tabWidth)
-	
-	-- Increment level
-	if incrLevel then level = level + 1 end
+	return new
 end
 
-fs.delete(sFile)
-local file = fs.open(sFile, "a")
-for k, v in pairs( content ) do
-	file.writeLine( new[k] .. v )
+
+--  -------- Main
+
+local path = args[1]
+
+if path then
+	if not fs.exists(path) then
+		print("File does not exist!")
+		error()
+	elseif fs.isDir(path) then
+		print("File is a directory!")
+		error()
+	elseif fs.isReadOnly(path) then
+		print("File is read only!")
+		error()
+	end
+
+	print("Re-indenting file...")
+
+	local content = {}
+	local f = fs.open(path, "r")
+	for line in f.readLine do
+		content[#content + 1] = line:gsub("^%s*(.-)", "%1")
+	end
+	f.close()
+
+	content = reindent(content)
+
+	fs.delete(path)
+	local f = fs.open(path, "a")
+	for _, v in pairs(content) do
+		f.writeLine(v)
+	end
+	f.close()
+else
+	-- GUI
+	-- ...
 end
-file.close()
