@@ -6,216 +6,322 @@
 
 
 --  -------- Variables
+local width, height = term.getSize()
 
 local args = {...}
-local tabWidth = 2
+local tabWidth = 4
+local path = nil
 
 local comments = {}
 local strings = {}
+local button = {}
 
 increment = {
-	"if%s+.+%s+then%s*$",
-	"for%s+.+%s+do%s*$",
-	"while%s+.+%s+do%s*$",
-	"repeat%s*$",
-	"function%s+[a-zA-Z_0-9]\(.*\)%s*$"
+    "if%s+.+%s+then%s*$",
+    "for%s+.+%s+do%s*$",
+    "while%s+.+%s+do%s*$",
+    "repeat%s*$",
+    "function%s+[a-zA-Z_0-9]\(.*\)%s*$"
 }
 
 decrement = {
-	"end",
-	"until%s+.+"
+    "end",
+    "until%s+.+"
 }
 
 special = {
-	"else%s*$",
-	"elseif%s+.+%s+then%s*$"
+    "else%s*$",
+    "elseif%s+.+%s+then%s*$"
 }
+--  -------- GUI
+local function setBox( xTop, yTop, xBot, yBot, col, name )
+    term.setBackgroundColour( col )
+    for i = 0, yBot - yTop do
+        for j = 0, xBot - xTop do
+            term.setCursorPos( xTop + j, yTop + i )
+            write(" ")
+        end
+    end
+    button[#button + 1] = {}
+    button[#button].xMin = xTop
+    button[#button].xMax = xBot
+    button[#button].yMin = yTop
+    button[#button].yMax = yBot
+    button[#button].name = name
+end
 
+local function drawColor( sPath )
+    term.setBackgroundColour( colours.grey )
+    term.clear()
+    
+    term.setBackgroundColour( colours.black )
+    term.setCursorPos( 1, 1)
+    write( string.rep(" ", width))
+    term.setCursorPos( 1, height)
+    write( string.rep(" ", width))
+    
+    term.setTextColour( colours.black )
+    
+    setBox( width - 15, 2, width - 1, 4, colours.orange, "setTab" )
+    term.setCursorPos( width - 14, 3 )
+    write("Tab width: " .. (tostring(tabWidth):len() ==  1 and "0" or "") .. tabWidth .. " " )
+    
+    local symbol = {"^", [[|]], "v"}
+    for i = 1, 3 do
+        term.setCursorPos( width - 1, i + 1 )
+        write( symbol[i] )
+    end
+    
+    setBox( 2, 2, 17, 4, colours.orange, "reIndent" )
+    term.setCursorPos( 4, 3 )
+    write( "Re-Indent!" )
+    
+    setBox( 11, math.ceil(height/2) - 2, width - 11, math.ceil(height/2) + 2, colours.lightGrey, "enterFile" )
+    term.setCursorPos( 12, math.ceil(height/2) )
+    write( ">" )
+    term.setCursorPos( 14, math.ceil(height/2) )
+    term.setBackgroundColour( colours.black )
+    write( string.rep(" ", width - 26) )
+    term.setCursorPos( 14, math.ceil(height/2) )
+    term.setTextColour( colours.white )
+    term.setCursorBlink( true )
+    write( sPath )
+end
 
 --  -------- Mapping
 
 local function check(func)
-	for _, v in pairs(func) do
-		local cLineStart = v["lineStart"]
-		local cLineEnd = v["lineEnd"]
-		local cCharStart = v["charStart"]
-		local cCharEnd = v["charEnd"]
-
-		if line >= cLineStart and line <= cLineEnd then
-			if line == cLineStart then return cCharStart < charNumb
-			elseif line == cLineEnd then return cCharEnd > charNumb
+    for _, v in pairs(func) do
+        local cLineStart = v["lineStart"]
+        local cLineEnd = v["lineEnd"]
+        local cCharStart = v["charStart"]
+        local cCharEnd = v["charEnd"]
+        
+        if line >= cLineStart and line <= cLineEnd then
+            if line == cLineStart then return cCharStart < charNumb
+            elseif line == cLineEnd then return cCharEnd > charNumb
 			else return true end
 		end
 	end
 end
 
 local function isIn(line, loc)
-	if check(comments) then return true end
-	if check(strings) then return true end
-	return false
+    if check(comments) then return true end
+    if check(strings) then return true end
+    return false
 end
 
 local function setComment(ls, le, cs, ce)
-	comments[#comments + 1] = {}
-	comments[#comments].lineStart = ls
-	comments[#comments].lineEnd = le
-	comments[#comments].charStart = cs
-	comments[#comments].charEnd = ce
+    comments[#comments + 1] = {}
+    comments[#comments].lineStart = ls
+    comments[#comments].lineEnd = le
+    comments[#comments].charStart = cs
+    comments[#comments].charEnd = ce
 end
 
 local function setString(ls, le, cs, ce)
-	strings[#strings + 1] = {}
-	strings[#strings].lineStart = ls
-	strings[#strings].lineEnd = le
-	strings[#strings].charStart = cs
-	strings[#strings].charEnd = ce
+    strings[#strings + 1] = {}
+    strings[#strings].lineStart = ls
+    strings[#strings].lineEnd = le
+    strings[#strings].charStart = cs
+    strings[#strings].charEnd = ce
 end
 
 local function map(contents)
-	local inCom = false
-	local inStr = false
-
-	for i = 1, #content do
-		if content[i]:find("%-%-%[%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-%[%[")
-			setComment(i, nil, cStart, nil)
-			inCom = true
-		elseif content[i]:find("%-%-%[=%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-%[=%[")
-			setComment(i, nil, cStart, nil)
-			inCom = true
-		elseif content[i]:find("%[%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%[%[")
-			setString(i, nil, cStart, nil)
-			inStr = true
-		elseif content[i]:find("%[=%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%[=%[")
-			setString(i, nil, cStart, nil)
-			inStr = true
-		end
-
-		if content[i]:find("%]%]") and inStr and not inCom then
-			local cStart, cEnd = content[i]:find("%]%]")
-			strings[#strings].lineEnd = i
-			strings[#strings].charEnd = cEnd
-			inStr = false
-		elseif content[i]:find("%]=%]") and inStr and not inCom then
-			local cStart, cEnd = content[i]:find("%]=%]")
-			strings[#strings].lineEnd = i
-			strings[#strings].charEnd = cEnd
-			inStr = false
-		end
-
-		if content[i]:find("%]%]") and not inStr and inCom then
-			local cStart, cEnd = content[i]:find("%]%]")
-			comments[#comments].lineEnd = i
-			comments[#comments].charEnd = cEnd
-			inCom = false
-		elseif content[i]:find("%]=%]") and not inStr and inCom then
-			local cStart, cEnd = content[i]:find("%]=%]")
-			comments[#comments].lineEnd = i
-			comments[#comments].charEnd = cEnd
-			inCom = false
-		end
-
-		if content[i]:find("%-%-") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-")
-			setComment(i, i, cStart, -1)
-		elseif content[i]:find("'") and not inStr and not inCom then
-			local cStart, cEnd = content[i]:find("'")
-			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
-			local _, cEnd = nextChar:find("'")
-			setString(i, i, cStart, cEnd)
-		elseif content[i]:find('"') and not inStr and not inCom then
-			local cStart, cEnd = content[i]:find('"')
-			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
-			local _, cEnd = nextChar:find('"')
-			setString(i, i, cStart, cEnd)
-		end
-	end
+    local inCom = false
+    local inStr = false
+    
+    for i = 1, #contents do
+        if content[i]:find("%-%-%[%[") and not inStr and not inCom then
+            local cStart = content[i]:find("%-%-%[%[")
+            setComment(i, nil, cStart, nil)
+            inCom = true
+        elseif content[i]:find("%-%-%[=%[") and not inStr and not inCom then
+            local cStart = content[i]:find("%-%-%[=%[")
+            setComment(i, nil, cStart, nil)
+            inCom = true
+        elseif content[i]:find("%[%[") and not inStr and not inCom then
+            local cStart = content[i]:find("%[%[")
+            setString(i, nil, cStart, nil)
+            inStr = true
+        elseif content[i]:find("%[=%[") and not inStr and not inCom then
+            local cStart = content[i]:find("%[=%[")
+            setString(i, nil, cStart, nil)
+            inStr = true
+        end
+        
+        if content[i]:find("%]%]") and inStr and not inCom then
+            local cStart, cEnd = content[i]:find("%]%]")
+            strings[#strings].lineEnd = i
+            strings[#strings].charEnd = cEnd
+            inStr = false
+        elseif content[i]:find("%]=%]") and inStr and not inCom then
+            local cStart, cEnd = content[i]:find("%]=%]")
+            strings[#strings].lineEnd = i
+            strings[#strings].charEnd = cEnd
+            inStr = false
+        end
+        
+        if content[i]:find("%]%]") and not inStr and inCom then
+            local cStart, cEnd = content[i]:find("%]%]")
+            comments[#comments].lineEnd = i
+            comments[#comments].charEnd = cEnd
+            inCom = false
+        elseif content[i]:find("%]=%]") and not inStr and inCom then
+            local cStart, cEnd = content[i]:find("%]=%]")
+            comments[#comments].lineEnd = i
+            comments[#comments].charEnd = cEnd
+            inCom = false
+        end
+        
+        if content[i]:find("%-%-") and not inStr and not inCom then
+            local cStart = content[i]:find("%-%-")
+            setComment(i, i, cStart, -1)
+        elseif content[i]:find("'") and not inStr and not inCom then
+            local cStart, cEnd = content[i]:find("'")
+            local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+            local _, cEnd = nextChar:find("'")
+            setString(i, i, cStart, cEnd)
+        elseif content[i]:find('"') and not inStr and not inCom then
+            local cStart, cEnd = content[i]:find('"')
+            local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+            local _, cEnd = nextChar:find('"')
+            setString(i, i, cStart, cEnd)
+        end
+    end
 end
 
 
 --  -------- Re-Indenting
 
 local function reindent(contents)
-	local new = {}
-	local level = 0
-	for k, v in pairs(contents) do
-		local incrLevel = false
-		local foundIncr = false
-		for _, incr in pairs(increment) do
-			if v:find(incr) and not isIn(k, v:find(incr)) then
-				incrLevel = true
-			end
-			if v:find(incr:sub(1, -2)) and not isIn(k, v:find(incr)) then
-				foundIncr = true
-			end
-		end
-
-		local decrLevel = false
-		if not incrLevel then
-			for _, decr in pairs(decrement) do
-				if v:find(decr) and not isIn(k, v:find(decr)) and not foundIncr then
-					level = math.max(0, level - 1)
-					decrLevel = true
-				end
-			end
-		end
-
-		if not decrLevel then
-			for _, sp in pairs(special) do
-				if v:find(sp) and not isIn(k, v:find(sp)) then
-					incrLevel = true
-					level = math.max(0, level - 1)
-				end
-			end
-		end
-
-		new[k] = string.rep(" ", level * tabWidth) .. v
-		if incrLevel then level = level + 1 end
-	end
-
-	return new
+    local new = {}
+    local level = 0
+    for k, v in pairs(contents) do
+        local incrLevel = false
+        local foundIncr = false
+        for _, incr in pairs(increment) do
+            if v:find(incr) and not isIn(k, v:find(incr)) then
+                incrLevel = true
+            end
+            if v:find(incr:sub(1, -2)) and not isIn(k, v:find(incr)) then
+                foundIncr = true
+            end
+        end
+        
+        local decrLevel = false
+        if not incrLevel then
+            for _, decr in pairs(decrement) do
+                if v:find(decr) and not isIn(k, v:find(decr)) and not foundIncr then
+                    level = math.max(0, level - 1)
+                    decrLevel = true
+                end
+            end
+        end
+        
+        if not decrLevel then
+            for _, sp in pairs(special) do
+                if v:find(sp) and not isIn(k, v:find(sp)) then
+                    incrLevel = true
+                    level = math.max(0, level - 1)
+                end
+            end
+        end
+        
+        new[k] = string.rep(" ", level * tabWidth) .. v
+        if incrLevel then level = level + 1 end
+    end
+    
+    return new
 end
 
 
 --  -------- Main
 
-local path = args[1]
+path = args[1]
 
 if path then
-	if not fs.exists(path) then
-		print("File does not exist!")
-		error()
-	elseif fs.isDir(path) then
-		print("File is a directory!")
-		error()
-	elseif fs.isReadOnly(path) then
-		print("File is read only!")
-		error()
-	end
-
-	print("Re-indenting file...")
-
-	local content = {}
-	local f = fs.open(path, "r")
-	for line in f.readLine do
-		content[#content + 1] = line:gsub("^%s*(.-)", "%1")
-	end
-	f.close()
-
-	content = reindent(content)
-
-	fs.delete(path)
-	local f = fs.open(path, "a")
-	for _, v in pairs(content) do
-		f.writeLine(v)
-	end
-	f.close()
-
-	print("File indented!")
+    if not fs.exists(path) then
+        print("File does not exist!")
+        return
+    elseif fs.isDir(path) then
+        print("File is a directory!")
+        return
+    elseif fs.isReadOnly(path) then
+        print("File is read only!")
+        return
+    end
+    
+    print("Re-indenting file...")
+    
+    local content = {}
+    local f = fs.open(path, "r")
+    for line in f.readLine do
+        content[#content + 1] = line:gsub("^%s*(.-)", "%1")
+    end
+    f.close()
+    
+    content = reindent(content)
+    
+    fs.delete(path)
+    local f = fs.open(path, "a")
+    for _, v in pairs(content) do
+        f.writeLine(v)
+    end
+    f.close()
+    
+    print("File indented!")
 else
-	-- GUI
-	-- ...
+    local showString = ""
+    path = ""
+    
+    if term.isColor() then
+        drawColor(showString)
+        
+        while true do
+            
+            local e = { os.pullEvent() }
+            if e[1] == "mouse_click" then
+                
+                for _, coord in pairs( button ) do
+                    if e[3] >= coord.xMin and e[3] <= coord.xMax and e[4] >= coord.yMin and e[4] <= coord.yMax then
+                        if coord.name == "reIndent" then
+                            --check if it exists -> true err message
+                            --re indent
+                            break
+                        end
+                    end
+                end
+                
+            elseif e[1] == "mouse_scroll" then
+                
+                for _, button in pairs( button ) do
+                    if button.name == "setTab" then
+                        tabWidth = (tabWidth + e[2] < 1 or tabWidth + e[2] > 99) and tabWidth or tabWidth + e[2]
+                        drawColor(showString)
+                        break
+                    end
+                end
+                
+            elseif e[1] == "char" then
+                
+                path = path .. e[2]
+                showString = path:sub( (path:len() >= width - 26) and -(width - 27) or -(path:len()) )
+                drawColor(showString)
+                
+            elseif e[1] == "key" then
+                
+                if e[2] == 14 then 
+                    path = path:sub( 1, path:len() - 1 )
+                    os.queueEvent("char", "")
+                elseif e[2] == 26 then
+                    -- Re-indent
+                elseif e[2] == 200 then
+                    os.queueEvent("mouse_scroll", -1 )
+                elseif e[2] == 208 then
+                    os.queueEvent("mouse_scroll",  1 )
+                end
+            end
+        end
+    end
 end
