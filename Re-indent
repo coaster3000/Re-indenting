@@ -17,7 +17,7 @@ local comments = {}
 local strings = {}
 local button = {}
 
-increment = {
+local increment = {
 	"if%s+.+%s+then%s*$",
 	"for%s+.+%s+do%s*$",
 	"while%s+.+%s+do%s*$",
@@ -25,12 +25,12 @@ increment = {
 	"function%s+[a-zA-Z_0-9]\(.*\)%s*$"
 }
 
-decrement = {
+local decrement = {
 	"end",
 	"until%s+.+"
 }
 
-special = {
+local special = {
 	"else%s*$",
 	"elseif%s+.+%s+then%s*$"
 }
@@ -89,7 +89,7 @@ local function drawColor(path)
 	term.write("Exit")
 
 	setBox(11, math.ceil(h / 2) - 1, w - 11, math.ceil(h / 2) + 1, colours.lightGrey,
-        "enter file")
+		"enter file")
 	term.setCursorPos(12, math.ceil(h / 2))
 	term.write(">")
 	term.setCursorPos(14, math.ceil(h / 2))
@@ -288,11 +288,11 @@ local function gui()
 	local path = ""
 	local err = nil
 
-    if not (term.isColor and term.isColor()) then
-        print("Usage:")
-        print("reindent <path>")
-        return true
-    end
+	if not (term.isColor and term.isColor()) then
+		print("Usage:")
+		print("reindent <path>")
+		return true
+	end
 
 	drawColor(showString)
 
@@ -301,8 +301,8 @@ local function gui()
 		if e[1] == "mouse_click" then
 			for _, coord in pairs(button) do
 				if e[3] >= coord.xMin and e[3] <= coord.xMax and
-                        e[4] >= coord.yMin and e[4] <= coord.yMax then
-                    if coord.name == "re-indent" then
+						e[4] >= coord.yMin and e[4] <= coord.yMax then
+					if coord.name == "re-indent" then
 						err = main(path, false)
 						break
 					elseif coord.name == "exit" then
@@ -335,14 +335,14 @@ local function gui()
 	term.setCursorBlink(false)
 	if err == "true" then
 		setBox(11, math.ceil(h / 2) - 1, w - 11, math.ceil(h / 2) + 1, colours.lightGrey,
-        	"successful")
+			"successful")
 		term.setTextColor(colors.black)
 		term.setCursorPos(12, math.ceil(h / 2))
 		term.write("> File Indented Successfully!")
 		sleep(2)
 	elseif err ~= "exit" then
 		setBox(11, math.ceil(h / 2) - 1, w - 11, math.ceil(h / 2) + 1, colours.lightGrey,
-        	"failed")
+			"failed")
 		term.setTextColor(colors.black)
 		term.setCursorPos(12, math.ceil(h / 2))
 		term.write("> " .. err)
