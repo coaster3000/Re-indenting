@@ -7,7 +7,7 @@
 
 --  -------- Variables
 
-local w, h = term.getSize()
+local w, h = term.getSize()  
 
 local args = {...}
 local tabWidth = 2
