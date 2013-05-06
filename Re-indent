@@ -103,24 +103,26 @@ end
 
 --  -------- Mapping
 
-local function check(func)
+local function check(func, nLine, nChar)
 	for _, v in pairs(func) do
 		local cLineStart = v["lineStart"]
 		local cLineEnd = v["lineEnd"]
 		local cCharStart = v["charStart"]
 		local cCharEnd = v["charEnd"]
-
-		if line >= cLineStart and line <= cLineEnd then
-			if line == cLineStart then return cCharStart < charNumb
-			elseif line == cLineEnd then return cCharEnd > charNumb
+	
+		if nLine >= cLineStart and nLine <= cLineEnd then
+			if nLine == cLineStart then return cCharStart < nChar
+			elseif nLine == cLineEnd then return cCharEnd > nChar
 			else return true end
 		end
 	end
 end
 
 local function isIn(line, loc)
-	if check(comments) then return true end
-	if check(strings) then return true end
+	local loc = loc or 1
+
+	if check(comments, line, loc) then return true end
+	if check(strings, line, loc) then return true end
 	return false
 end
 
@@ -145,59 +147,59 @@ local function map(contents)
 	local inStr = false
 
 	for i = 1, #contents do
-		if content[i]:find("%-%-%[%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-%[%[")
+		if contents[i]:find("%-%-%[%[") and not inStr and not inCom then
+			local cStart = contents[i]:find("%-%-%[%[")
 			setComment(i, nil, cStart, nil)
 			inCom = true
-		elseif content[i]:find("%-%-%[=%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-%[=%[")
+		elseif contents[i]:find("%-%-%[=%[") and not inStr and not inCom then
+			local cStart = contents[i]:find("%-%-%[=%[")
 			setComment(i, nil, cStart, nil)
 			inCom = true
-		elseif content[i]:find("%[%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%[%[")
+		elseif contents[i]:find("%[%[") and not inStr and not inCom then
+			local cStart = contents[i]:find("%[%[")
 			setString(i, nil, cStart, nil)
 			inStr = true
-		elseif content[i]:find("%[=%[") and not inStr and not inCom then
-			local cStart = content[i]:find("%[=%[")
+		elseif contents[i]:find("%[=%[") and not inStr and not inCom then
+			local cStart = contents[i]:find("%[=%[")
 			setString(i, nil, cStart, nil)
 			inStr = true
 		end
 
-		if content[i]:find("%]%]") and inStr and not inCom then
-			local cStart, cEnd = content[i]:find("%]%]")
+		if contents[i]:find("%]%]") and inStr and not inCom then
+			local cStart, cEnd = contents[i]:find("%]%]")
 			strings[#strings].lineEnd = i
 			strings[#strings].charEnd = cEnd
 			inStr = false
-		elseif content[i]:find("%]=%]") and inStr and not inCom then
-			local cStart, cEnd = content[i]:find("%]=%]")
+		elseif contents[i]:find("%]=%]") and inStr and not inCom then
+			local cStart, cEnd = contents[i]:find("%]=%]")
 			strings[#strings].lineEnd = i
 			strings[#strings].charEnd = cEnd
 			inStr = false
 		end
 
-		if content[i]:find("%]%]") and not inStr and inCom then
-			local cStart, cEnd = content[i]:find("%]%]")
+		if contents[i]:find("%]%]") and not inStr and inCom then
+			local cStart, cEnd = contents[i]:find("%]%]")
 			comments[#comments].lineEnd = i
 			comments[#comments].charEnd = cEnd
 			inCom = false
-		elseif content[i]:find("%]=%]") and not inStr and inCom then
-			local cStart, cEnd = content[i]:find("%]=%]")
+		elseif contents[i]:find("%]=%]") and not inStr and inCom then
+			local cStart, cEnd = contents[i]:find("%]=%]")
 			comments[#comments].lineEnd = i
 			comments[#comments].charEnd = cEnd
 			inCom = false
 		end
 
-		if content[i]:find("%-%-") and not inStr and not inCom then
-			local cStart = content[i]:find("%-%-")
+		if contents[i]:find("%-%-") and not inStr and not inCom then
+			local cStart = contents[i]:find("%-%-")
 			setComment(i, i, cStart, -1)
-		elseif content[i]:find("'") and not inStr and not inCom then
-			local cStart, cEnd = content[i]:find("'")
-			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+		elseif contents[i]:find("'") and not inStr and not inCom then
+			local cStart, cEnd = contents[i]:find("'")
+			local nextChar = contents[i]:sub(cEnd + 1, string.len(contents[i]))
 			local _, cEnd = nextChar:find("'")
 			setString(i, i, cStart, cEnd)
-		elseif content[i]:find('"') and not inStr and not inCom then
-			local cStart, cEnd = content[i]:find('"')
-			local nextChar = content[i]:sub(cEnd + 1, string.len(content[i]))
+		elseif contents[i]:find('"') and not inStr and not inCom then
+			local cStart, cEnd = contents[i]:find('"')
+			local nextChar = contents[i]:sub(cEnd + 1, string.len(contents[i]))
 			local _, cEnd = nextChar:find('"')
 			setString(i, i, cStart, cEnd)
 		end
@@ -213,7 +215,7 @@ local function reindent(contents)
 		local incrLevel = false
 		local foundIncr = false
 		for _, incr in pairs(increment) do
-			if v:find(incr) and not isIn(k, v:find(incr)) then
+			if v:find(incr) and not isIn( k, v:find(incr) ) then
 				incrLevel = true
 			end
 			if v:find(incr:sub(1, -2)) and not isIn(k, v:find(incr)) then
@@ -270,11 +272,27 @@ local function main(path, v)
 	end
 	f.close()
 
-	content = reindent(content)
+	map( content )
+
+	local nContent = {}
+	local newF = fs.open(path, "r")
+	
+	local index = 0
+	for nLine in newF.readLine do
+		index = index + 1
+		if not isIn( index ) then
+			nContent[#nContent + 1] = nLine:gsub("^%s*(.-)", "%1")
+		else
+			nContent[#nContent + 1] = nLine
+		end
+	end
+	newF.close()
+
+	nContent = reindent(nContent)
 
 	fs.delete(path)
 	local f = fs.open(path, "a")
-	for _, v in pairs(content) do
+	for _, v in pairs(nContent) do
 		f.writeLine(v)
 	end
 	f.close()
