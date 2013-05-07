@@ -7,7 +7,7 @@
 
 --  -------- Variables
 
-local version = 1.1
+local version = 1.0
 local update = false
 
 local w, h = term.getSize()  
@@ -336,10 +336,13 @@ local function gui()
 						err = "exit"
 						break
 					elseif coord.name == "Update" then
-						local sFile = fs.open( shell.getRunningProgram(), "w")
-						sFile.write( http.get("https://raw.github.com/EngineerCoding/Re-indenting/master/Re-indent").readAll() )
-						sFile.close()
-						break
+						local content = http.get("https://raw.github.com/EngineerCoding/Re-indenting/master/Re-indent").readAll()
+						if content then
+							local sFile = fs.open( shell.getRunningProgram(), "w")
+							sFile.write(  )
+							sFile.close()
+							break
+						end
 					end
 				end
 			end
