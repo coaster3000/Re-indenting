@@ -7,6 +7,9 @@
 
 --  -------- Variables
 
+local version = 1.1
+local update = false
+
 local w, h = term.getSize()  
 
 local args = {...}
@@ -84,9 +87,15 @@ local function drawColor(path)
 	term.setCursorPos(4, 2)
 	term.write("Re-Indent!")
 
-	setBox(5, h - 2, 13, h, colors.orange, "exit")
+	setBox(5, h - 2, 13, h, colours.orange, "exit")
 	term.setCursorPos(7, h - 1)
 	term.write("Exit")
+	
+	if update then
+		setBox( w - 15, h - 2, w - 7, h, colours.orange, "Update")
+		term.setCursorPos(w - 14, h - 1)
+		term.write("Update!")
+	end
 
 	setBox(11, math.ceil(h / 2) - 1, w - 11, math.ceil(h / 2) + 1, colours.lightGrey,
 		"enter file")
@@ -326,6 +335,11 @@ local function gui()
 					elseif coord.name == "exit" then
 						err = "exit"
 						break
+					elseif coord.name == "Update" then
+						local sFile = fs.open( shell.getRunningProgram(), "w")
+						sFile.write( http.get("https://raw.github.com/EngineerCoding/Re-indenting/master/Re-indent").readAll() )
+						sFile.close()
+						break
 					end
 				end
 			end
@@ -378,5 +392,13 @@ local function gui()
 end
 
 -- Run
+if http then
+	local versionNumber = http.get("https://raw.github.com/EngineerCoding/Re-indenting/master/version").readAll()
+	if tonumber(versionNumber) > version then
+		update = true
+	end
+end
+
+
 if path then main(args[1], true)
 else while gui() ~= true do end end
