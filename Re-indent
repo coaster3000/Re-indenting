@@ -9,8 +9,8 @@
 local w, h = term.getSize()  
 
 local args = {...}
-local tabWidth = 2
-local path = nil
+local tabWidth = tonumber(args[2]) or 2
+local path = args[1]
 
 local comments = {}
 local strings = {}
@@ -64,7 +64,7 @@ local function setBox(xTop, yTop, xBot, yBot, col, name)
 	button[#button].name = name
 end
 
-local function drawColor(path)
+local function drawColor( sPath )
 	term.setBackgroundColour(colours.grey)
 	term.clear()
 	term.setTextColour(colours.black)
@@ -97,7 +97,7 @@ local function drawColor(path)
 	term.setCursorPos(14, math.ceil(h / 2))
 	term.setTextColour(colours.white)
 	term.setCursorBlink(true)
-	term.write(path)
+	term.write( sPath )
 end
 
 --  -------- Mapping
@@ -307,7 +307,7 @@ local function gui()
 
 	if not (term.isColor and term.isColor()) then
 		print("Usage:")
-		print("reindent <path>")
+		print("reindent <path> <optional tab width>")
 		return true
 	end
 
