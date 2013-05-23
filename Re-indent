@@ -5,6 +5,13 @@
 
 
 --  -------- Variables
+local lastyield = 0
+
+local yieldx = 0
+
+local yieldblinkMax = 4
+
+local yieldblink = 1
 
 local w, h = term.getSize()  
 
@@ -34,6 +41,37 @@ local special = {
 	"elseif%s+.+%s+then%s*$"
 }
 
+--  -------- YIELDER
+
+local function yield(yieldtime, maxwait)
+	if type(yieldtime) ~= "number" then
+		yieldtime = 1
+	end
+	if not lastyield then
+		lastyield = (os.clock())
+	end
+	local curclock = (os.clock())
+	if (curclock - lastyield > (maxwait or 4)) then
+		sleep(yieldtime)
+		if yieldblink <= yieldblinkMax then
+			write(".")
+			yieldblink = yieldblink + 1
+		else
+			local x , y = term.getCursorPos()
+			x = yieldx
+			local b = yieldblink
+			term.setCursorPos(x, y)
+			for i=1,b do
+				write(" ")
+			end
+			term.setCursorPos(x, y)
+			yieldblink = 1
+			write(".")
+		end
+		return true
+	end
+	return false
+end
 
 --  -------- GUI
 
@@ -146,6 +184,7 @@ local function map(contents)
 	local inStr = false
 
 	for i = 1, #contents do
+		yield(1)
 		if contents[i]:find("%-%-%[%[") and not inStr and not inCom then
 			local cStart = contents[i]:find("%-%-%[%[")
 			setComment(i, nil, cStart, nil)
@@ -211,6 +250,7 @@ local function reindent(contents)
 	local new = {}
 	local level = 0
 	for k, v in pairs(contents) do
+		yield(1)
 		local incrLevel = false
 		local foundIncr = false
 		for _, incr in pairs(increment) do
@@ -262,11 +302,15 @@ local function main(path, v)
 		return "File is read only!"
 	end
 
-	if v then print("Re-indenting file...") end
+	if v then write("Re-indenting file") end
+
+	local x, y = term.getCursorPos()
+	yieldx = x	
 
 	local content = {}
 	local f = fs.open(path, "r")
 	for line in f.readLine do
+		yield(1)
 		content[#content + 1] = line:gsub("^%s*(.-)", "%1")
 	end
 	f.close()
@@ -278,6 +322,7 @@ local function main(path, v)
 	
 	local index = 0
 	for nLine in newF.readLine do
+		yield(1)
 		index = index + 1
 		if not isIn( index ) then
 			nContent[#nContent + 1] = nLine:gsub("^%s*(.-)", "%1")
@@ -292,9 +337,11 @@ local function main(path, v)
 	fs.delete(path)
 	local f = fs.open(path, "a")
 	for _, v in pairs(nContent) do
+		yield(1)
 		f.writeLine(v)
 	end
 	f.close()
+	print("")
 
 	if v then print("File indented!") end
 	return "true"
