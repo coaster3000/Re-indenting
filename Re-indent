@@ -5,7 +5,7 @@
 
 
 --  -------- Variables
-local lastyield = 0
+local lastyield = nil
 
 local yieldx = 0
 
@@ -51,8 +51,9 @@ local function yield(yieldtime, maxwait)
 		lastyield = (os.clock())
 	end
 	local curclock = (os.clock())
-	if (curclock - lastyield > (maxwait or 4)) then
+	if (curclock - lastyield > (maxwait or 3.5)) then
 		sleep(yieldtime)
+		lastyield = (os.clock())
 		if yieldblink <= yieldblinkMax then
 			write(".")
 			yieldblink = yieldblink + 1
