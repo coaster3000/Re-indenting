@@ -43,35 +43,10 @@ local special = {
 
 --  -------- YIELDER
 
-local function yield(yieldtime, maxwait)
-	if type(yieldtime) ~= "number" then
-		yieldtime = 1
-	end
-	if not lastyield then
-		lastyield = (os.clock())
-	end
-	local curclock = (os.clock())
-	if (curclock - lastyield > (maxwait or 3.5)) then
-		sleep(yieldtime)
-		lastyield = (os.clock())
-		if yieldblink <= yieldblinkMax then
-			write(".")
-			yieldblink = yieldblink + 1
-		else
-			local x , y = term.getCursorPos()
-			x = yieldx
-			local b = yieldblink
-			term.setCursorPos(x, y)
-			for i=1,b do
-				write(" ")
-			end
-			term.setCursorPos(x, y)
-			yieldblink = 1
-			write(".")
-		end
-		return true
-	end
-	return false
+local function yield()
+	os.queueEvent("dummy")
+	coroutine.yield() -- Thanks to theOriginalBIT for yield speed
+	return true
 end
 
 --  -------- GUI
